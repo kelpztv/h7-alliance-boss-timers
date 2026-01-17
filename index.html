@@ -1,88 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>H7 Alliance Boss Timer</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<meta charset="UTF-8">
+<title>H7 Alliance Boss Timer</title>
+<style>
+body {
+  background: #0b0b0f;
+  color: white;
+  font-family: Arial, sans-serif;
+  padding: 30px;
+}
+h1 {
+  color: #7c5cff;
+}
+button {
+  background: #7c5cff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  margin-top: 6px;
+  cursor: pointer;
+}
+.boss-card {
+  background: #111117;
+  border: 1px solid #1e1e2f;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+}
+.timer {
+  font-size: 20px;
+  color: #44ff88;
+}
+</style>
 </head>
-<body style="background:#111;color:white;font-family:sans-serif;">
-  <div id="root"></div>
 
-  <script type="text/babel">
+<body>
 
-    const { useState, useEffect, useMemo } = React;
+<h1>H7 Alliance Boss Timer</h1>
+<button onclick="addBoss()">Add Boss</button>
 
-    function BossTimerApp() {
-      const defaultBosses = [
-        { name: "Dark Reaper", respawn: 180 },
-        { name: "Night Stalker", respawn: 2700 },
-        { name: "Hell Beast", respawn: 3600 }
-      ];
+<div id="bossList"></div>
 
-      const channel = useMemo(() => new BroadcastChannel("h7-boss-sync"), []);
+<script>
+const bosses = [
+  {name:"Dark Reaper", respawn:180},
+  {name:"Night Stalker", respawn:270},
+  {name:"Hell Beast", respawn:360}
+];
 
-      const [bosses, setBosses] = useState(() => JSON.parse(localStorage.getItem("bosses")) || defaultBosses);
-      const [kills, setKills] = useState(() => JSON.parse(localStorage.getItem("kills") || "{}"));
+let timers = {};
 
-      useEffect(() => {
-        localStorage.setItem("bosses", JSON.stringify(bosses));
-        channel.postMessage({ bosses });
-      }, [bosses]);
+function render() {
+  const container = document.getElementById("bossList");
+  container.innerHTML = "";
+  bosses.forEach(b => {
+    const remain = timers[b.name]
+      ? Math.max(0, Math.floor((timers[b.name] + b.respawn*1000 - Date.now())/1000))
+      : null;
 
-      useEffect(() => {
-        localStorage.setItem("kills", JSON.stringify(kills));
-        channel.postMessage({ kills });
-      }, [kills]);
+    const div = document.createElement("div");
+    div.className = "boss-card";
+    div.innerHTML = `
+      <strong>${b.name}</strong><br>
+      ${remain !== null ? `<span class="timer">${format(remain)}</span>` : "No timer running"}<br>
+      <button onclick="start('${b.name}')">${remain === null ? "Start" : "Restart"}</button>
+    `;
+    container.appendChild(div);
+  });
+}
 
-      useEffect(() => {
-        channel.onmessage = ({ data }) => {
-          if (data.bosses) setBosses(data.bosses);
-          if (data.kills) setKills(data.kills);
-        };
-      }, []);
+function start(name){
+  timers[name] = Date.now();
+  render();
+}
 
-      function start(name) {
-        setKills(prev => ({ ...prev, [name]: Date.now() }));
-      }
+function addBoss(){
+  const name = prompt("Boss name?");
+  const mins = prompt("Respawn time in minutes?");
+  if(name && mins){
+    bosses.push({name:name, respawn:parseInt(mins)*60});
+    render();
+  }
+}
 
-      function fmt(sec) {
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        return `${m}m ${s}s`;
-      }
+function format(sec){
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return m + "m " + s + "s";
+}
 
-      function addBoss() {
-        const name = prompt("Boss name");
-        const respawn = parseInt(prompt("Respawn minutes")) * 60;
-        setBosses(prev => [...prev, { name, respawn }]);
-      }
+setInterval(render, 1000);
+render();
+</script>
 
-      return (
-        <div>
-          <h1>H7 Alliance Boss Timer</h1>
-          <button onClick={addBoss}>Add Boss</button>
-
-          {bosses.map(b => {
-            const last = kills[b.name];
-            const remain = last ? Math.max(0, Math.floor((last + b.respawn*1000 - Date.now())/1000)) : null;
-            return (
-              <div key={b.name}>
-                <b>{b.name}</b><br/>
-                {remain !== null ? `Next in ${fmt(remain)}` : "No timer running"}<br/>
-                <button onClick={() => start(b.name)}>{remain===0 ? "Ready" : "Start"}</button>
-                <hr/>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById("root")).render(<BossTimerApp />);
-
-  </script>
 </body>
 </html>
 
