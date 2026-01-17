@@ -3,43 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <title>H7 Alliance Boss Timer</title>
+
 <style>
 body {
   background:#0b0b0f;
   color:white;
   font-family:Arial, sans-serif;
-  padding:30px;
+  padding:20px;
 }
 h1 { color:#7c5cff; }
+
+.boss-card {
+  display:flex;
+  align-items:center;
+  background:#12121b;
+  border:1px solid #2a2a40;
+  padding:12px;
+  margin-bottom:10px;
+  border-radius:8px;
+}
+
+.boss-card img {
+  width:50px;
+  height:50px;
+  margin-right:12px;
+  border-radius:6px;
+}
+
+.timer {
+  color:#44ff88;
+  font-size:18px;
+}
 
 button {
   background:#7c5cff;
   color:white;
   border:none;
   padding:6px 10px;
+  margin-top:6px;
   cursor:pointer;
-}
-
-.boss-card {
-  background:#111117;
-  border:1px solid #1e1e2f;
-  padding:15px;
-  margin-bottom:10px;
-  border-radius:8px;
-  display:flex;
-  align-items:center;
-  gap:15px;
-}
-
-.boss-card img {
-  width:50px;
-  height:50px;
-  border-radius:6px;
-}
-
-.timer {
-  font-size:20px;
-  color:#44ff88;
 }
 </style>
 </head>
@@ -52,13 +54,13 @@ button {
 <div id="bossList"></div>
 
 <script>
-const channel = new BroadcastChannel("h7-boss-sync");
-
-let bosses = [
-  {name:"Dark Reaper", respawn:180, icon:"https://i.imgur.com/Ixq9BiD.png"},
-  {name:"Night Stalker", respawn:270, icon:"https://i.imgur.com/o6vV7G6.png"},
-  {name:"Hell Beast", respawn:360, icon:"https://i.imgur.com/V8Zb8cC.png"}
+const bosses = [
+  {name:"Dark Reaper", respawn:180, icon:"https://i.imgur.com/1Xq9BiD.png"},
+  {name:"Night Stalker", respawn:270, icon:"https://i.imgur.com/6o5V7G6.png"},
+  {name:"Hell Beast", respawn:360, icon:"https://i.imgur.com/tV8Z8bC.png"}
 ];
+
+const channel = new BroadcastChannel("boss-sync");
 
 let timers = JSON.parse(localStorage.getItem("timers") || "{}");
 
@@ -67,56 +69,47 @@ channel.onmessage = e => {
   localStorage.setItem("timers", JSON.stringify(timers));
 };
 
-function sync(){
+function start(name){
+  timers[name] = Date.now();
+  localStorage.setItem("timers", JSON.stringify(timers));
   channel.postMessage(timers);
 }
 
 function render(){
-  const container = document.getElementById("bossList");
-  container.innerHTML = "";
+  const list = document.getElementById("bossList");
+  list.innerHTML = "";
 
-  bosses.forEach(b => {
+  bosses.forEach(b=>{
     const remain = timers[b.name]
-      ? Math.max(0, Math.floor((timers[b.name] + b.respawn*1000 - Date.now())/1000))
+      ? Math.max(0, Math.floor((timers[b.name]+b.respawn*1000-Date.now())/1000))
       : null;
 
     const div = document.createElement("div");
     div.className = "boss-card";
-
     div.innerHTML = `
       <img src="${b.icon}">
       <div>
         <strong>${b.name}</strong><br>
-        ${remain !== null ? `<span class="timer">${format(remain)}</span>` : "No timer running"}<br>
-        <button onclick="start('${b.name}')">${remain === null ? "Start" : "Restart"}</button>
+        ${remain!==null ? `<span class="timer">${format(remain)}</span>` : "No timer"}<br>
+        <button onclick="start('${b.name}')">${remain===null?"Start":"Restart"}</button>
       </div>
     `;
-
-    container.appendChild(div);
+    list.appendChild(div);
   });
-}
-
-function start(name){
-  timers[name] = Date.now();
-  localStorage.setItem("timers", JSON.stringify(timers));
-  sync();
-  render();
 }
 
 function addBoss(){
   const name = prompt("Boss name?");
-  const mins = prompt("Respawn time in minutes?");
-  const icon = prompt("Boss icon image URL?");
-  if(name && mins && icon){
-    bosses.push({name:name, respawn:parseInt(mins)*60, icon:icon});
+  const mins = prompt("Respawn minutes?");
+  const icon = prompt("Icon image URL?");
+  if(name && mins){
+    bosses.push({name, respawn:parseInt(mins)*60, icon});
     render();
   }
 }
 
 function format(sec){
-  const m = Math.floor(sec/60);
-  const s = sec%60;
-  return m+"m "+s+"s";
+  return Math.floor(sec/60)+"m "+(sec%60)+"s";
 }
 
 setInterval(render,1000);
